@@ -38,6 +38,9 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
+
+pio.renderers.default = "notebook"
 ```
 
 ```python
@@ -331,7 +334,7 @@ display(dff)
 # load reforecast
 
 start_date = datetime.date(1999, 1, 1)
-end_date = datetime.date(2001, 9, 1)
+end_date = datetime.date(2018, 12, 1)
 
 glofas_reforecast = GlofasReforecast(
     country_config=country_config,
@@ -374,8 +377,8 @@ for frac_thresh in frac_threshs:
                 {"gt_thres": sum, "number": "count", "actual": "first"}
             )
             dff["frac"] = dff["gt_thres"] / dff["number"]
-            dff["trigger_perday"] = dff["frac"] > frac_thresh
-            dff["actual_perday"] = dff["actual"] > level
+            dff["trigger_perday"] = dff["frac"] >= frac_thresh
+            dff["actual_perday"] = dff["actual"] >= level
             for x in ["trigger", "actual"]:
                 for day_shift in consec_days:
                     dff[f"{x}_perday_{day_shift}"] = dff[f"{x}_perday"].shift(
@@ -467,7 +470,10 @@ for station in stations:
 
 for station in stations:
     fig = go.Figure()
-    df_plot = df_confuse[df_confuse["station"] == station]
+    df_plot = df_confuse[
+        (df_confuse["station"] == station)
+        & (df_confuse["frac_thresh"] == 0.75)
+    ]
     fig.add_trace(
         go.Scatter(
             x=df_plot["leadtime"].dt.days,
@@ -475,7 +481,33 @@ for station in stations:
             mode="lines",
         )
     )
+    fig.add_trace(
+        go.Scatter(
+            x=df_plot["leadtime"].dt.days,
+            y=df_plot["FPR"],
+            mode="lines",
+        )
+    )
 
-    fig.update_layout(template="simple_white")
+    fig.update_layout(template="simple_white", title=station)
     fig.show()
+```
+
+```python
+# GloFAS 4.0 reanalysis
+
+geobb4 = GeoBoundingBox(lat_max=15, lat_min=12, lon_max=3, lon_min=1)
+g_re4 = GlofasReanalysis(
+    country_config=country_config,
+    geo_bounding_box=geobb,
+    start_date=datetime.date(2020, 1, 1),
+    end_date=datetime.date(2020, 12, 31),
+)
+g_re4.process()
+da = g_re4.load()
+df_re4 = da.to_dataframe()
+```
+
+```python
+df_re4
 ```
