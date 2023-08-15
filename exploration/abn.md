@@ -19,6 +19,8 @@ Les données historiques de la station Niamey
 
 ```python
 %load_ext jupyter_black
+%load_ext autoreload
+%autoreload 2
 ```
 
 ```python
@@ -33,6 +35,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+import utils
 
 from ochanticipy import (
     create_country_config,
@@ -47,128 +50,131 @@ pio.renderers.default = "notebook"
 ```
 
 ```python
-load_dotenv()
-
-RAW_DIR = Path(os.environ["OAP_DATA_DIR"]) / "public/raw/ner"
-ABN_PATH = RAW_DIR / "abn/Données_ Niamey2005_2022.xlsx"
-
-adm1_sel = ["Tillabéri", "Niamey", "Dosso", "Maradi"]
-startdate = datetime.date(2005, 1, 1)
-enddate = datetime.date(2024, 1, 1)
-
-country_config = create_country_config(iso3="ner")
-codab = CodAB(country_config=country_config)
-gdf_adm1 = codab.load(admin_level=1)
-gdf_aoi = gdf_adm1[gdf_adm1["adm_01"].isin(adm1_sel)]
-geobb = GeoBoundingBox.from_shape(gdf_aoi)
+# load and get maxima
+df = utils.load_combined_abn()
+df = utils.shift_to_floodseason(df)
+df_max = utils.get_peak(
+    df, max_col="Water Level (cm)", agg_col="station", date_col="date"
+)
 ```
 
 ```python
-# read ABN data
-# note - this is originally from Niger-HYCOS
-
-df_abn = pd.read_excel(ABN_PATH, skiprows=[0, 1], index_col=0)
-df_abn
+# plot average by station
+df_plot = df.groupby(["station", "dayofseason"]).mean().reset_index()
+px.line(df_plot, x="dayofseason", y="Water Level (cm)", color="station").show()
 ```
 
 ```python
-fig = px.line(df_abn, y="Water Level (cm)")
-fig.update_layout(template="simple_white")
-fig.show()
-```
-
-```python
-df_plot = df_abn.copy()
-df_plot["year"] = df_abn.index.year
-px.scatter(
-    df_abn, x="Discharges (m3/s)", y="Water Level (cm)", color="year"
+# plot yearly for station
+station = "Garbe Kourou"
+df_plot = df[df["station"] == station]
+px.line(
+    df_plot, x="dayofseason", y="Water Level (cm)", color="seasonyear"
 ).show()
 ```
 
 ```python
-df_abn.corr(method="pearson")
+px.scatter(
+    df.sort_values("Discharges (m3/s)"),
+    y="Water Level (cm)",
+    x="Discharges (m3/s)",
+    color="station",
+)
 ```
 
 ```python
-# calculate return
+value_col = "Water Level (cm)"
+year_col = "seasonyear"
+agg_col = "station"
+quants = np.linspace(0, 1, 101)
 
-df_max = df_abn.groupby(df_abn.index.year)["Water Level (cm)"].max()
-total_years = len(df_max)
+df_return_periods = pd.DataFrame()
+df_count_yearly = pd.DataFrame()
 
 return_years = [1.5, 2, 3, 5, 10]
 
-df_count_yearly = pd.DataFrame()
-df_return_periods = pd.DataFrame(index=return_years)
-
-dff = df_max
-print(dff)
-quants = np.linspace(0, 1, 101)
-levels = dff.quantile(quants)
-#     print(levels)
-for level in levels:
-    dfff = dff[dff >= level]
-    years = "<br>".join(
-        [str(x) for x in dfff.sort_index(ascending=False).index]
-    )
-    count = len(dfff)
-    df_add = pd.DataFrame(
-        {
-            "level": level,
-            "count": count,
-            "years": years,
-            "return": total_years / count,
-        },
-        index=[0],
-    )
-    df_count_yearly = pd.concat([df_count_yearly, df_add], ignore_index=True)
-df_i = df_count_yearly
-df_return_periods["level"] = np.interp(
-    return_years, df_i["return"], df_i["level"]
-)
-
-df_count_yearly["return"] = len(df_max) / df_count_yearly["count"]
-```
-
-```python
-df_count_yearly
-```
-
-```python
-# plot return period station
-
-df_plot = df_count_yearly
-
-min_year = df_abn.index.year.min()
-
-x_max = 10
-y_max = df_plot[df_plot["return"] <= x_max]["level"].max()
-y_min = df_plot["level"].min()
-fig = px.line(df_plot, x="return", y="level")
-
-for year in return_years:
-    level = df_return_periods.loc[year, "level"]
-    fig.add_trace(
-        go.Scatter(
-            x=[1, x_max],
-            y=[level, level],
-            mode="lines+text",
-            text=[None, f"{year}-year"],
-            line=dict(width=1, dash="dash", color="black"),
-            textposition="top left",
+for station in df_max[agg_col].unique():
+    dff = df_max[df_max[agg_col] == station].set_index(year_col)[value_col]
+    levels = dff.quantile(quants)
+    total_years = len(dff)
+    for level in levels:
+        dfff = dff[dff >= level]
+        years = "<br>".join(
+            [str(x) for x in dfff.sort_index(ascending=False).index]
         )
+        count = len(dfff)
+        df_add = pd.DataFrame(
+            {
+                agg_col: station,
+                value_col: level,
+                "count": count,
+                f"{year_col}s": years,
+                "return": total_years / count,
+            },
+            index=[0],
+        )
+        df_count_yearly = pd.concat(
+            [df_count_yearly, df_add], ignore_index=True
+        )
+
+    df_i = df_count_yearly[df_count_yearly[agg_col] == station]
+    df_i = df_i.sort_values(value_col, ascending=True)
+    # interpolate to find precise return periods
+    interp = np.interp(return_years, df_i["return"], df_i[value_col])
+    for index, return_year in enumerate(return_years):
+        # but, if exact value in return periods, take lowest value
+        if return_year in df_i["return"].values:
+            lower_value = df_i[df_i["return"] == return_year].iloc[0][
+                value_col
+            ]
+            interp[index] = lower_value
+
+    df_add = pd.DataFrame()
+    df_add[value_col] = interp
+    df_add["return_period"] = return_years
+    df_add[agg_col] = station
+    df_return_periods = pd.concat(
+        [df_return_periods, df_add], ignore_index=True
     )
 
-fig.update_xaxes(range=(1, x_max), title="Return period (years)")
-fig.update_yaxes(
-    range=(y_min, y_max), title="One-day flow rate (m<sup>3</sup>/s)"
-)
-
-fig.update_layout(
-    template="simple_white",
-    title=f"ABN période de retour (depuis {min_year})",
-    showlegend=False,
-)
+df_return_periods = df_return_periods.set_index(["return_period", agg_col])
 ```
+
+```python
+for station in df_max[agg_col].unique():
+    min_year = df_max[df_max["station"] == station]["date"].min().year
+    df_plot = df_count_yearly[df_count_yearly[agg_col] == station]
+    x_max = 10
+    y_max = df_plot[df_plot["return"] <= x_max][value_col].max()
+    y_min = df_plot[value_col].min()
+    fig = px.line(df_plot, x="return", y=value_col)
+
+    for year in return_years[:-1]:
+        level = df_return_periods.loc[year, station].values[0]
+        fig.add_trace(
+            go.Scatter(
+                x=[1, x_max * 0.8],
+                y=[level, level],
+                mode="lines+text",
+                text=[None, f" {year}-ans = {level:.0f} cm"],
+                line=dict(width=1, dash="dot", color="black"),
+                textposition="middle right",
+            )
+        )
+
+    fig.update_xaxes(range=(1, x_max), title="Période de retour (ans)")
+    fig.update_yaxes(range=(y_min, y_max), title="Niveau d'eau (cm)")
+
+    fig.update_layout(
+        template="simple_white",
+        title=f"{station} période de retour (depuis {min_year})",
+        showlegend=False,
+        width=800,
+    )
+    fig.show()
+```
+
+## Comparison with GloFAS
 
 ```python
 # load GloFAS reanalysis
@@ -255,4 +261,12 @@ fig.show()
 
 ```python
 df_compare.corr()
+```
+
+```python
+df_re4.plot()
+```
+
+```python
+
 ```

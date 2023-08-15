@@ -17,6 +17,8 @@ jupyter:
 
 ```python
 %load_ext jupyter_black
+%load_ext autoreload
+%autoreload 2
 ```
 
 ```python

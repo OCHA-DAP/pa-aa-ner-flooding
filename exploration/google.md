@@ -119,3 +119,7 @@ df_max_norm = (df_max - df_max.min()) / (df_max.max() - df_max.min())
 df_max_date = df.groupby(df.index.year).idxmax()
 df_max_date = df_max_date.apply(lambda col: col.dt.dayofyear)
 ```
+
+```python
+
+```
