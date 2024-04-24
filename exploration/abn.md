@@ -6,7 +6,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.14.7
+      jupytext_version: 1.16.1
   kernelspec:
     display_name: pa-aa-ner-flooding
     language: python
@@ -46,7 +46,7 @@ from ochanticipy import (
     GlofasReforecast,
 )
 
-pio.renderers.default = "notebook"
+# pio.renderers.default = "notebook"
 ```
 
 ```python
