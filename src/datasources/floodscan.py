@@ -88,3 +88,8 @@ def calc_daily_exposure():
 def load_daily_exposure():
     filename = "ner_adm3_totalexposed_daily_1998_2023.csv"
     return pd.read_csv(PROC_FS_DIR / filename, parse_dates=["time"])
+
+
+def load_ciblage():
+    filename = "ner-ciblage-communes.xlsx"
+    return pd.read_excel(PROC_FS_DIR / filename)

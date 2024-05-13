@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 
 from src.datasources import codab, anadia, floodscan, hydrosheds, abn
 from src.utils import shift_to_floodseason
+from src.constants import *
 ```
 
 ```python
@@ -66,6 +67,10 @@ ax.axis("off")
 ```python
 impact = anadia.load_processed_anadia()
 impact = impact.rename(columns={"Maisons détruites": "destroyed"})
+```
+
+```python
+impact[impact["Communes"] == "SINDER"]
 ```
 
 ```python
@@ -154,7 +159,7 @@ impact_sum_years = impact_sum[impact_sum["year"].isin(years)]
 ```
 
 ```python
-compare
+SINDER in impact_sum_years["ADM3_PCODE"].unique()
 ```
 
 ```python
@@ -172,6 +177,10 @@ compare = impact_sum_years.merge(
 compare = compare.merge(level_max_years, on="year")
 compare["destroyed"] = compare["destroyed"].fillna(0).astype(int)
 compare
+```
+
+```python
+SINDER in compare["ADM3_PCODE"].unique()
 ```
 
 ```python
@@ -196,11 +205,19 @@ compare
 ```
 
 ```python
+SINDER in compare["ADM3_PCODE"].unique()
+```
+
+```python
 impact_sum_years_mean = (
     compare.groupby("ADM3_PCODE")
     .mean()[["destroyed", "fs_roll3"]]
     .reset_index()
 )
+```
+
+```python
+SINDER in impact_sum_years_mean["ADM3_PCODE"].unique()
 ```
 
 ```python
@@ -228,11 +245,11 @@ all_corr = all_corr.sort_values("destroyed", ascending=False)
 ```
 
 ```python
-all_corr.plot(x="destroyed", y="TPR", linestyle="", marker=".")
+SINDER in all_corr["ADM3_PCODE"].unique()
 ```
 
 ```python
-
+all_corr.plot(x="destroyed", y="TPR", linestyle="", marker=".")
 ```
 
 ```python
@@ -318,6 +335,10 @@ ax.set_title(
 ```
 
 ```python
+df_save["Commune"].sort_values().unique()
+```
+
+```python
 admin_names = {
     "ADM1_FR": "Région",
     "ADM2_FR": "Département",
@@ -365,13 +386,21 @@ df_save = df_save[
 ]
 df_save["destroyed"] = df_save["destroyed"].astype(int)
 df_save["TPR"] = df_save["TPR"] * 100
-df_save = df_save.dropna()
-int_cols = ["destroyed", "fs_roll3", "TPR"]
+# df_save = df_save.dropna()
+int_cols = ["destroyed"]
 df_save[int_cols] = df_save[int_cols].astype(int)
 df_save = df_save.rename(columns=admin_names | var_names)
 
 filename = "ner-ciblage-communes.xlsx"
 df_save.to_excel(floodscan.PROC_FS_DIR / filename, index=False)
+```
+
+```python
+df_save[df_save["ADM3_PCODE"] == SINDER]
+```
+
+```python
+SINDER in df_save["ADM3_PCODE"].unique()
 ```
 
 ```python
