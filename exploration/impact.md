@@ -6,7 +6,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.14.7
+      jupytext_version: 1.16.1
   kernelspec:
     display_name: pa-aa-ner-flooding
     language: python
@@ -96,11 +96,13 @@ codab.plot()
 ```
 
 ```python
-impact.columns
+impact["Communes"].unique()
 ```
 
 ```python
-impact[impact[utils.ID_COL] == F4].plot(x="date", y="Maisons détruites")
+for commune in ["LIBORE", "KARMA", "N'DOUNGA"]:
+    dff = impact[impact["Communes"] == commune]
+    display(dff.groupby(dff["date"].dt.year)["Maisons détruites"].sum())
 ```
 
 ```python
