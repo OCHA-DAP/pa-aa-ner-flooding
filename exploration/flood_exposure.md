@@ -46,6 +46,18 @@ level
 ```
 
 ```python
+peaks = level.groupby("seasonyear")["level"].max().reset_index()
+```
+
+```python
+peaks[peaks["level"] > 580]
+```
+
+```python
+(2023 - 2005 + 1) / 7
+```
+
+```python
 level[level.duplicated(subset=["dayofseason", "seasonyear"])]
 ```
 
