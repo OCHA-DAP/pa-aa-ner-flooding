@@ -81,7 +81,7 @@ def shift_to_floodseason(
         df["dayofseason"] = df[date_col].dt.dayofyear - startdayofyear
         df["seasonyear"] = (
             df[date_col] - pd.DateOffset(days=startdayofyear)
-        ).dt.year
+        ).dt.year - 1
 
     df["dayofseason"] = (
         df["dayofseason"].apply(lambda x: x + 365 if x < 1 else x).astype(int)

@@ -27,7 +27,7 @@ second flooding season (crue guinéenne)
 ```python
 from src.datasources import abn
 from src.constants import *
-from src.utils import shift_to_floodseason
+from src.utils import shift_to_floodseason_corrected, FLOODSEASON_START
 from utils import FLOODSEASON_ENDDAY
 ```
 
@@ -37,11 +37,8 @@ THRESH = 580
 
 ```python
 level = abn.load_abn_niamey().reset_index()
-level = level.rename(columns={"Date": "time", "Water Level (cm)": "level"})
-level = shift_to_floodseason(level, date_col="time")
-# drop duplicates due to leapyears (just on Jan 1)
-level = level[~level.duplicated(subset=["dayofseason", "seasonyear"])]
-# keep only full seasons
+level = level.rename(columns={"Date": "date", "Water Level (cm)": "level"})
+level = shift_to_floodseason_corrected(level)
 level = level[level["seasonyear"].isin(range(2005, 2022))]
 level
 ```
@@ -54,7 +51,19 @@ l_peaks[l_peaks["level"] >= THRESH]
 ```
 
 ```python
-(2023 - 2005 + 1) / 7
+l_triggers = locale[locale["level"] >= THRESH]
+l_triggers = l_triggers.loc[
+    l_triggers.groupby("seasonyear")["dayofseason"].idxmin()
+]
+l_triggers
+```
+
+```python
+(2023 - 2005 + 1) / len(l_peaks[l_peaks["level"] >= THRESH])
+```
+
+```python
+(2023 - 2005 + 1)
 ```
 
 ```python
@@ -65,5 +74,17 @@ g_peaks[g_peaks["level"] >= THRESH]
 ```
 
 ```python
-(2023 - 2005 + 1) / 2
+g_triggers = gui[gui["level"] >= THRESH]
+g_triggers = g_triggers.loc[
+    g_triggers.groupby("seasonyear")["dayofseason"].idxmin()
+]
+g_triggers
+```
+
+```python
+(2023 - 2005 + 1) / len(g_peaks[g_peaks["level"] >= THRESH])
+```
+
+```python
+level[level["level"] == 580]
 ```
