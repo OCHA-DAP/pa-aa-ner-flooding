@@ -15,7 +15,7 @@ def shift_to_floodseason_corrected(
         df["dayofyear"] - FLOODSEASON_START_DAYOFYEAR + 1
     ) % 365 + 1
     df["seasonyear"] = df["year"] - (
-        df["dayofseason"] > FLOODSEASON_START_DAYOFYEAR
+        df["dayofyear"] < FLOODSEASON_START_DAYOFYEAR
     ).astype(int)
     # add 0.5 for extra day from leap year
     df["dayofseason"] = df.apply(

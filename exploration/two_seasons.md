@@ -26,6 +26,7 @@ second flooding season (crue guinéenne)
 
 ```python
 import pandas as pd
+import numpy as np
 
 from src.datasources import abn
 from src.constants import *
@@ -42,7 +43,11 @@ level = abn.load_abn_niamey().reset_index()
 level = level.rename(columns={"Date": "date", "Water Level (cm)": "level"})
 level = shift_to_floodseason_corrected(level)
 level = level[level["seasonyear"].isin(range(2005, 2022))]
-level
+level.sort_values("date")
+```
+
+```python
+level[level["date"].dt.month == 11].groupby(level["date"].dt.year).max()
 ```
 
 ```python
@@ -66,6 +71,10 @@ l_peaks[l_peaks["level"] >= THRESH]
 ```
 
 ```python
+l_peaks
+```
+
+```python
 l_triggers = locale[locale["level"] >= THRESH]
 l_triggers = l_triggers.loc[
     l_triggers.groupby("seasonyear")["dayofseason"].idxmin()
@@ -74,18 +83,14 @@ l_triggers
 ```
 
 ```python
-(2023 - 2005 + 1) / len(l_peaks[l_peaks["level"] >= THRESH])
-```
-
-```python
-(2023 - 2005 + 1)
-```
-
-```python
 # crues guineennes
 gui = level[level["dayofseason"] >= FLOODSEASON_ENDDAY]
 g_peaks = gui.loc[gui.groupby("seasonyear")["level"].idxmax()]
 g_peaks[g_peaks["level"] >= THRESH]
+```
+
+```python
+g_peaks
 ```
 
 ```python
@@ -97,11 +102,33 @@ g_triggers
 ```
 
 ```python
-(2023 - 2005 + 1) / len(g_peaks[g_peaks["level"] >= THRESH])
+gui[(gui["seasonyear"] == 2018) & (gui["level"] >= 564)]
 ```
 
 ```python
-level[level["level"] == 580]
+gui[(gui["seasonyear"] == 2020) & (gui["level"] >= 564)]
+```
+
+```python
+nov_g_trigger = gui[
+    (gui["seasonyear"].isin([2018, 2020])) & (gui["date"].dt.month == 11)
+].copy()
+```
+
+```python
+nov_g_trigger["d_level"] = (
+    nov_g_trigger["level"] - nov_g_trigger["level"].shift()
+)
+```
+
+```python
+nov_g_trigger["d_level"] = nov_g_trigger["d_level"].apply(
+    lambda x: x if x >= -1 else np.NaN
+)
+```
+
+```python
+(580 - 564) / nov_g_trigger["d_level"].mean()
 ```
 
 ```python
