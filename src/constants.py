@@ -26,3 +26,20 @@ ADM3_AOI_PCODES = [GAYA, TOUNOUGA, TANDA, KARMA, NDOUNGA, LIBORE]
 NIGER_MAINRIVER_ID = 10877687
 
 SINDER = "NE006012006"
+
+FRENCH_MONTHS = {
+    "Jan": "jan.",
+    "Feb": "fév.",
+    "Mar": "mars",
+    "Apr": "avr.",
+    "May": "mai",
+    "Jun": "juin",
+    "Jul": "juil.",
+    "Aug": "août",
+    "Sep": "sept.",
+    "Oct": "oct.",
+    "Nov": "nov.",
+    "Dec": "déc.",
+}
+
+CHD_GREEN = "#1bb580"
