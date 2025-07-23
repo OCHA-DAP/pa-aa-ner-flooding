@@ -35,7 +35,7 @@ from ochanticipy import create_country_config, CodAB
 import utils
 
 
-pio.renderers.default = "notebook"
+pio.renderers.default = "jupyterlab"
 ```
 
 ```python
@@ -222,8 +222,10 @@ for year in years:
             y=[0, max_fs],
             text=[
                 "",
-                (f"  Étendue max.:<br>  {peak_date:%b %d}<br>  "
-                 "(préavis {leadtime.days} jours)"),
+                (
+                    f"  Étendue max.:<br>  {peak_date:%b %d}<br>  "
+                    f"(préavis {leadtime.days} jours)"
+                ),
             ],
             textfont_color="crimson",
             line=dict(color="crimson", width=2, dash="dot"),
@@ -256,7 +258,7 @@ for year in years:
     max_date = dff["date"].max() - pd.Timedelta(days=100)
     fig.update_xaxes(range=[min_date, max_date])
 
-    fig.show(renderer="notebook")
+    fig.show()
 
 print(np.mean(leadtimes))
 ```

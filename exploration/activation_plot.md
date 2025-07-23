@@ -65,7 +65,7 @@ level.sort_values("date")
 ```
 
 ```python
-level.dtypes
+level.iloc[-20:]
 ```
 
 ```python
@@ -102,11 +102,13 @@ gui_df = level[(level["dayofseason"] > FLOODSEASON_ENDDAY)]
 ```
 
 ```python
-gui_df[gui_df["level"] > THRESH]
+gui_df[gui_df["level"] >= THRESH].groupby("seasonyear")["date"].min()
 ```
 
 ```python
-
+gui_df.loc[
+    gui_df[gui_df["level"] >= THRESH].groupby("seasonyear")["level"].idxmax()
+]
 ```
 
 ```python
@@ -169,7 +171,7 @@ ax.plot(
     markersize=10,
 )
 
-ax.legend(title="Déclenchements\nguinéennes\nprécédents", loc="lower left")
+ax.legend(title="Déclenchements\nguinéens\nprécédents", loc="lower left")
 ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
 ax.set_ylabel("Niveau d'eau (cm)")
@@ -180,7 +182,7 @@ ax.axhspan(0, 530, facecolor="green", alpha=0.1)
 ax.axhspan(530, 580, facecolor="yellow", alpha=0.1)
 ax.axhspan(580, 620, facecolor="orange", alpha=0.1)
 ax.axhspan(620, 700, facecolor="red", alpha=0.1)
-ax.axhline(580, color="gray", linestyle="--")
+ax.axhline(580, color="gray", linestyle="--", zorder=-1)
 ax.annotate(
     " seuil\n (580 cm)",
     (datetime(1900, 11, 1), 580),
@@ -196,15 +198,7 @@ ax.set_title("Fleuve Niger à Niamey\nCrues guinéennes (depuis 2005)")
 ```
 
 ```python
-
-```
-
-```python
-plot_df = gui_df.pivot(index="plot_date", columns="seasonyear", values="level")
-```
-
-```python
-plot_df.plot()
+gui_df.loc[gui_df["level"].idxmax()]
 ```
 
 ```python
