@@ -20,3 +20,12 @@ def load_niger_river(local: bool = False):
     else:
         filepath = HS_PROC_DIR / filename
     return gpd.read_file(filepath)
+
+
+def load_niger_system_rivers(local: bool = False):
+    filename = "niger_system_rivers"
+    if local:
+        filepath = Path("temp") / filename
+    else:
+        filepath = HS_PROC_DIR / filename
+    return gpd.read_file(filepath)
