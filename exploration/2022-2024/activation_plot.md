@@ -33,7 +33,7 @@ import matplotlib.ticker as ticker
 
 from src.datasources import abn
 from src.constants import *
-from src.utils import shift_to_floodseason_corrected, FLOODSEASON_START
+from src.utils.floodseason import shift_to_floodseason_corrected, FLOODSEASON_START
 from utils import FLOODSEASON_ENDDAY
 ```
 

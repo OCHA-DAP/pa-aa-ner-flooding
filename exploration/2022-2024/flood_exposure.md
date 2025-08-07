@@ -31,7 +31,7 @@ from tqdm.notebook import tqdm
 
 from src.datasources import worldpop, codab, floodscan, abn, hydrosheds
 from src.constants import *
-from src.utils import shift_to_floodseason
+from src.utils.floodseason import shift_to_floodseason
 ```
 
 ```python

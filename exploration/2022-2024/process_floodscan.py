@@ -1,6 +1,7 @@
 import pandas as pd
-import utils
 from ochanticipy import CodAB, create_country_config
+
+import utils
 
 pd.options.mode.chained_assignment = None
 

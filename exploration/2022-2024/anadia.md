@@ -28,7 +28,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from src.datasources import codab, anadia, floodscan, hydrosheds, abn
-from src.utils import shift_to_floodseason
+from src.utils.floodseason import shift_to_floodseason
 from src.constants import *
 ```
 

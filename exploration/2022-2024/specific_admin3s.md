@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 
 from src.datasources import codab, anadia, abn
 from src.constants import *
-from src.utils import shift_to_floodseason_corrected
+from src.utils.floodseason import shift_to_floodseason_corrected
 ```
 
 ```python
