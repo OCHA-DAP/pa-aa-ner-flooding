@@ -164,6 +164,8 @@ df_curve_fit.plot(x="Water Level (cm)", y="Discharges (m3/s)", ax=ax)
 df_curve_fit.plot(x="Water Level (cm)", y="pred_dis", ax=ax)
 ```
 
+Ok after various tweaks to the standard fitting it doesn't really look that good. We can try
+
 ```python
 def fit_polynomial_rating_curve(
     df,

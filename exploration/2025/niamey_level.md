@@ -14,6 +14,7 @@ jupyter:
 ---
 
 # Niamey level
+<!-- markdownlint-disable MD013 -->
 
 ```python
 %load_ext jupyter_black
@@ -396,4 +397,117 @@ df_trig_dates
 
 ```python
 df_trig_dates["grdc_lt"].mean()
+```
+
+## Plot timing after certain level
+
+```python
+initial_level = 566
+```
+
+```python
+thresh
+```
+
+```python
+df_timing = df_trig_dates_grdc.copy()
+```
+
+```python
+df_locale_recent = df_recent[df_recent["flood_type"] == "l"]
+```
+
+```python
+df_locale_recent
+```
+
+```python
+df_timing
+```
+
+```python
+def get_level_initial_date(season, level):
+    dff = df_locale_recent[
+        (df_locale_recent["level"] >= level)
+        & (df_locale_recent["season"] == season)
+    ]
+    return dff["time"].min()
+```
+
+```python
+seasons = df_locale_recent[df_locale_recent["level"] >= initial_level][
+    "season"
+].unique()
+```
+
+```python
+seasons
+```
+
+```python
+df_timing["first_date"] = df_timing["season"].apply(
+    get_level_initial_date, level=initial_level
+)
+```
+
+```python
+df_timing
+```
+
+```python
+df_timing["delay"] = df_timing["trig_date"] - df_timing["first_date"]
+```
+
+```python
+dicts = []
+for season, group in df_recent[df_recent["flood_type"] == "l"].groupby(
+    "season"
+):
+    dff = group[group["level"] >= initial_level]
+    if not dff.empty:
+        dicts.append({"initial_date": dff["time"].min(), "season": season})
+
+df_timing = pd.DataFrame(dicts)
+```
+
+```python
+df_timing["trig_date"] = df_timing["season"].apply(
+    get_level_initial_date, level=thresh
+)
+```
+
+```python
+df_timing["delay"] = df_timing["trig_date"] - df_timing["initial_date"]
+```
+
+```python
+df_timing["delay"].mean()
+```
+
+```python
+df_timing
+```
+
+```python
+len(df_timing)
+```
+
+```python
+df_timing.dropna()
+```
+
+```python
+len(df_timing.dropna()) / len(df_timing)
+```
+
+```python
+df_locale_recent
+```
+
+```python
+ax = df_locale_recent[df_locale_recent["season"] == 2024].plot(
+    x="time", y="level"
+)
+ax.axhline(600, color="crimson")
+ax.axhline(580, color="darkorange")
 ```
