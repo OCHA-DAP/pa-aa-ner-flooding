@@ -15,7 +15,11 @@ GF_STATIONS = {
     "garbekourou": {
         "lon": 1.625,
         "lat": 13.72,
-    }
+    },
+    "niamey": {
+        "lon": 2.075,
+        "lat": 13.52,
+    },
 }
 
 

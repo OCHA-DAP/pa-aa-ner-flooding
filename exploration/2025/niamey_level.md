@@ -82,6 +82,10 @@ df_plot["plot_date"] = df_plot["time"].map(
 ```
 
 ```python
+df_plot["level"] = calculate_stage(df_plot["runoff_mean"])
+```
+
+```python
 fig, ax = plt.subplots(figsize=(10, 5), dpi=200)
 
 for year, group in df_plot.groupby(df_plot["time"].dt.year):
@@ -96,6 +100,30 @@ for year, group in df_plot.groupby(df_plot["time"].dt.year):
     )
 
 df_plot.groupby("plot_date")["runoff_mean"].mean().plot(ax=ax, color="k")
+
+ax.xaxis.set_major_locator(mdates.MonthLocator())
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+
+ax.set_ylim(bottom=0)
+ax.set_xlim((df_plot["plot_date"].min(), df_plot["plot_date"].max()))
+[ax.spines[x].set_visible(False) for x in ["top", "right"]]
+```
+
+```python
+fig, ax = plt.subplots(figsize=(10, 5), dpi=200)
+
+for year, group in df_plot.groupby(df_plot["time"].dt.year):
+    group.plot(
+        x="plot_date",
+        y="level",
+        ax=ax,
+        legend=False,
+        color="k",
+        alpha=0.2,
+        linewidth=0.5,
+    )
+
+df_plot.groupby("plot_date")["level"].mean().plot(ax=ax, color="k")
 
 ax.xaxis.set_major_locator(mdates.MonthLocator())
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
@@ -232,11 +260,23 @@ rp
 ```
 
 ```python
-rp_l = np.interp(600, df_peaks_l["level"], df_peaks_l["level_rp"])
+len(df_peaks[df_peaks["level"] >= thresh])
 ```
 
 ```python
-rp_l
+len(df_peaks)
+```
+
+```python
+rp_l = np.interp(600, df_peaks["level"], df_peaks["l_rp"])
+```
+
+```python
+rp_g = np.interp(600, df_peaks["level"], df_peaks["g_rp"])
+```
+
+```python
+print(rp_l, rp_g)
 ```
 
 ```python
@@ -249,7 +289,7 @@ for col, label in [
     df_peaks.sort_values("level").plot(x=col, y="level", ax=ax, label=label)
 
 ax.set_xlabel("Période de retour (ans)")
-ax.set_ylabel("Niveau d'eau à Niamey")
+ax.set_ylabel("Niveau d'eau à Niamey (cm)")
 
 ax.set_xlim((1, 10))
 ax.set_ylim(top=680)
@@ -316,17 +356,21 @@ df_recent
 ```
 
 ```python
-dicts = []
-for season, group in df_recent[df_recent["flood_type"] == "l"].groupby(
-    "season"
+def get_first_dates(
+    df, level, level_col="level", date_col="time", season_col="season"
 ):
-    dff = group[group["level"] >= thresh]
-    if not dff.empty:
-        dicts.append({"trig_date": dff["time"].min(), "season": season})
+    dicts = []
+    for season, group in df.groupby(season_col):
+        dff = group[group[level_col] >= level]
+        if not dff.empty:
+            dicts.append({"first_date": dff[date_col].min(), "season": season})
+    return pd.DataFrame(dicts)
 ```
 
 ```python
-df_trig_dates_grdc = pd.DataFrame(dicts)
+df_trig_dates_grdc = get_first_dates(
+    df_recent[df_recent["flood_type"] == "l"], level=thresh
+)
 ```
 
 ```python
@@ -402,106 +446,103 @@ df_trig_dates["grdc_lt"].mean()
 ## Plot timing after certain level
 
 ```python
-initial_level = 566
+df_l_recent = df_recent[df_recent["flood_type"] == "l"]
+df_g_recent = df_recent[df_recent["flood_type"] == "g"]
 ```
 
 ```python
-thresh
+df_peaks_l
 ```
 
 ```python
-df_timing = df_trig_dates_grdc.copy()
+df_l_recent.loc[df_l_recent.groupby("season")["level"].idxmax()]
 ```
 
 ```python
-df_locale_recent = df_recent[df_recent["flood_type"] == "l"]
+def get_peak_dates(df, level_col="level", season_col="season"):
+    df_out = df.loc[df.groupby(season_col)[level_col].idxmax()]
+    df_out = df_out.rename(
+        columns={"time": "peak_date", "level": "peak_level"}
+    )[["peak_date", "season", "peak_level"]]
+    return df_out
 ```
 
 ```python
-df_locale_recent
+df_l_red_first = get_first_dates(df_l_recent, level=620)
+df_l_trig_first = get_first_dates(df_l_recent, level=thresh)
+df_l_peak = get_peak_dates(df_l_recent)
 ```
 
 ```python
-df_timing
+df_g_red_first = get_first_dates(df_g_recent, level=620)
+df_g_trig_first = get_first_dates(df_g_recent, level=thresh)
+df_g_peak = get_peak_dates(df_g_recent)
 ```
 
 ```python
-def get_level_initial_date(season, level):
-    dff = df_locale_recent[
-        (df_locale_recent["level"] >= level)
-        & (df_locale_recent["season"] == season)
-    ]
-    return dff["time"].min()
-```
-
-```python
-seasons = df_locale_recent[df_locale_recent["level"] >= initial_level][
-    "season"
-].unique()
-```
-
-```python
-seasons
-```
-
-```python
-df_timing["first_date"] = df_timing["season"].apply(
-    get_level_initial_date, level=initial_level
+df_l_timing = df_l_red_first.merge(
+    df_l_trig_first, how="outer", on="season", suffixes=("_red", "_trig")
+).merge(df_l_peak)
+df_l_timing["lt_red"] = (
+    df_l_timing["first_date_red"] - df_l_timing["first_date_trig"]
 )
-```
-
-```python
-df_timing
-```
-
-```python
-df_timing["delay"] = df_timing["trig_date"] - df_timing["first_date"]
-```
-
-```python
-dicts = []
-for season, group in df_recent[df_recent["flood_type"] == "l"].groupby(
-    "season"
-):
-    dff = group[group["level"] >= initial_level]
-    if not dff.empty:
-        dicts.append({"initial_date": dff["time"].min(), "season": season})
-
-df_timing = pd.DataFrame(dicts)
-```
-
-```python
-df_timing["trig_date"] = df_timing["season"].apply(
-    get_level_initial_date, level=thresh
+df_l_timing["lt_peak"] = (
+    df_l_timing["peak_date"] - df_l_timing["first_date_trig"]
 )
+df_l_timing["flood_type"] = "l"
 ```
 
 ```python
-df_timing["delay"] = df_timing["trig_date"] - df_timing["initial_date"]
+df_l_timing.merge()
 ```
 
 ```python
-df_timing["delay"].mean()
+df_l_timing
+```
+
+```python
+df_l_timing["lt_red"].mean()
+```
+
+```python
+df_l_timing["lt_peak"].mean()
+```
+
+```python
+df_g_timing = df_g_red_first.merge(
+    df_g_trig_first, how="outer", on="season", suffixes=("_red", "_trig")
+).merge(df_g_peak)
+df_g_timing["lt_red"] = (
+    df_g_timing["first_date_red"] - df_g_timing["first_date_trig"]
+)
+df_g_timing["lt_peak"] = (
+    df_g_timing["peak_date"] - df_g_timing["first_date_trig"]
+)
+df_g_timing["flood_type"] = "g"
+```
+
+```python
+df_g_timing
+```
+
+```python
+df_g_timing["lt_peak"].mean()
+```
+
+```python
+df_timing = pd.concat([df_l_timing, df_g_timing])
+```
+
+```python
+df_timing["lt_peak"].mean()
+```
+
+```python
+df_timing["lt_red"].mean()
 ```
 
 ```python
 df_timing
-```
-
-```python
-len(df_timing)
-```
-
-```python
-df_timing.dropna()
-```
-
-```python
-len(df_timing.dropna()) / len(df_timing)
-```
-
-```python
-df_locale_recent
 ```
 
 ```python
