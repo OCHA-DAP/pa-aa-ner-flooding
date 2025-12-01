@@ -28,12 +28,30 @@ def get_blob_name(
     dataset: Literal["reanalysis", "reforecast", "forecast"],
     station_name: str,
     year: int = None,
+    lt_chunk: list[int] = None,
 ) -> str:
     if year is None and data_type == "raw":
         raise ValueError("Year must be provided for raw data")
     if data_type == "raw":
-        return f"{PROJECT_PREFIX}/{data_type}/glofas/{dataset}/glofas_{data_type}_{dataset}_{station_name}_{year}.grib"  # noqa
-    return f"{PROJECT_PREFIX}/{data_type}/glofas/glofas_{dataset}_{station_name}.parquet"  # noqa
+        if dataset == "reanalysis":
+            return f"{PROJECT_PREFIX}/{data_type}/glofas/{dataset}/glofas_{data_type}_{dataset}_{station_name}_{year}.grib"  # noqa
+        elif dataset == "reforecast":
+            if lt_chunk is None:
+                raise ValueError(
+                    "lt_chunk must be provided for reforecast data"
+                )
+            lt_chunk_str = get_lt_chunk_str(lt_chunk)
+            return f"{PROJECT_PREFIX}/{data_type}/glofas/{dataset}/glofas_{data_type}_{dataset}_{station_name}_{year}_{lt_chunk_str}.grib"  # noqa
+        elif dataset == "forecast":
+            raise NotImplementedError
+    elif data_type == "processed":
+        return f"{PROJECT_PREFIX}/{data_type}/glofas/glofas_{dataset}_{station_name}.parquet"  # noqa
+    else:
+        raise ValueError("data_type must be either 'raw' or 'processed'")
+
+
+def get_lt_chunk_str(lt_chunk: list[int]) -> str:
+    return f"{lt_chunk[0]}-{lt_chunk[-1]}"
 
 
 def get_glofas_grid_coords(lon, lat):
@@ -110,6 +128,109 @@ def download_reanalysis_year(
     return cds_utils.download_raw_cds_api_to_blob(dataset, request, blob_name)
 
 
+def download_reforecast(
+    station_name: str,
+    months: list[int] = None,
+    years: list[int] = None,
+    max_leadtime_day: int = 46,
+    max_leadtime_chunk: int = 7,  # needs to be determined based on max
+    # request size; 7 works if you have only 4 months
+    clobber: bool = False,
+):
+    if months is None:
+        months = list(range(1, 13))
+    if years is None:
+        years = list(range(2003, 2024))
+    leadtimes = [x * 24 for x in range(1, max_leadtime_day + 1)]
+    lt_chunks = [
+        leadtimes[x : x + max_leadtime_chunk]
+        for x in range(0, len(leadtimes), max_leadtime_chunk)
+    ]
+    for lt_chunk in tqdm(lt_chunks, desc="Leadtime chunks"):
+        for year in tqdm(years, desc=f"Downloading reforecast {lt_chunk}"):
+            download_reforecast_year_lt_chunk(
+                year=year,
+                lt_chunk=lt_chunk,
+                station_name=station_name,
+                months=months,
+                clobber=clobber,
+            )
+
+
+def download_reforecast_year_lt_chunk(
+    year: int,
+    lt_chunk: list[int],
+    station_name: str,
+    months: list[int] = None,
+    pitch: float = 0.001,
+    clobber: bool = False,
+    glofas_version: str = "version_4_0",
+    product_type: str = "ensemble_perturbed_reforecast",
+):
+    if months is None:
+        months = list(range(1, 13))
+    station = GF_STATIONS[station_name]
+    glofas_lon, glofas_lat = get_glofas_grid_coords(
+        station["lon"], station["lat"]
+    )
+    N = round(glofas_lat + pitch, 3)
+    S = round(glofas_lat, 3)
+    E = round(glofas_lon + pitch, 3)
+    W = round(glofas_lon, 3)
+    dataset = "cems-glofas-reforecast"
+    request = {
+        "system_version": [glofas_version],
+        "hydrological_model": ["lisflood"],
+        "product_type": [product_type],
+        "variable": ["river_discharge_in_the_last_24_hours"],
+        "hyear": [f"{year}"],
+        "hmonth": [f"{x:02}" for x in months],
+        "hday": [f"{x:02}" for x in range(1, 32)],
+        # "hday": ["02", "03", "04"],
+        "leadtime_hour": [str(x) for x in lt_chunk],
+        "data_format": "grib2",
+        "download_format": "unarchived",
+        "area": [N, W, S, E],
+    }
+    blob_name = get_blob_name(
+        "raw",
+        "reforecast",
+        station_name,
+        year,
+        lt_chunk=lt_chunk,
+    )
+    if (
+        not clobber
+        and stratus.get_container_client().get_blob_client(blob_name).exists()
+    ):
+        print(f"{blob_name} already exists in blob storage")
+        return
+    return cds_utils.download_raw_cds_api_to_blob(dataset, request, blob_name)
+
+
+def process_reforecast(station_name: str):
+    raw_blob_dir = f"{PROJECT_PREFIX}/raw/glofas/reforecast/"
+    blob_names = [
+        x
+        for x in stratus.list_container_blobs(name_starts_with=raw_blob_dir)
+        if x.endswith(".grib") and station_name in x
+    ]
+    dfs = []
+    for blob_name in tqdm(blob_names):
+        ds = load_cached_blob(blob_name)
+        da = ds["dis24"]
+        df_in = da.to_dataframe().reset_index()[
+            ["dis24", "valid_time", "step", "time"]
+        ]
+        df_in["leadtime"] = df_in["step"].dt.days
+        df_in = df_in.drop(columns=["step"])
+        dfs.append(df_in)
+    df = pd.concat(dfs, ignore_index=True)
+    df = df.sort_values(["time", "leadtime"])
+    blob_name = get_blob_name("processed", "reforecast", station_name)
+    stratus.upload_parquet_to_blob(df, blob_name)
+
+
 def load_reanalysis_year(
     data_type: Literal["raw", "processed"],
     station_name: str = None,
@@ -128,19 +249,23 @@ def load_reanalysis_year(
         station_name = f"lat{lat}_lon{lon}"
     blob_name = get_blob_name(data_type, "reanalysis", station_name, year)
     if data_type == "raw":
-        local_filepath = "temp" / Path(blob_name)
-        if not local_filepath.exists():
-            blob_data = stratus.load_blob_data(blob_name)
-            print(f"Downloading {blob_name} to {local_filepath}")
-            if not local_filepath.parent.exists():
-                os.makedirs(local_filepath.parent)
-            with open(local_filepath, "wb") as file:
-                file.write(blob_data)
-        return xr.load_dataset(
-            local_filepath, backend_kwargs={"decode_timedelta": True}
-        )
+        return load_cached_blob(blob_name)
     elif data_type == "processed":
         return stratus.load_parquet_from_blob(blob_name)
+
+
+def load_cached_blob(blob_name):
+    local_filepath = "temp" / Path(blob_name)
+    if not local_filepath.exists():
+        blob_data = stratus.load_blob_data(blob_name)
+        print(f"Downloading {blob_name} to {local_filepath}")
+        if not local_filepath.parent.exists():
+            os.makedirs(local_filepath.parent)
+        with open(local_filepath, "wb") as file:
+            file.write(blob_data)
+    return xr.load_dataset(
+        local_filepath, backend_kwargs={"decode_timedelta": True}
+    )
 
 
 def process_reanalysis(station_name: str):
@@ -171,4 +296,9 @@ def process_reanalysis(station_name: str):
 
 def load_reanalysis(station_name: str):
     blob_name = get_blob_name("processed", "reanalysis", station_name)
+    return stratus.load_parquet_from_blob(blob_name)
+
+
+def load_reforecast(station_name: str):
+    blob_name = get_blob_name("processed", "reforecast", station_name)
     return stratus.load_parquet_from_blob(blob_name)

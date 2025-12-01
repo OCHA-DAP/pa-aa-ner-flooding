@@ -234,11 +234,11 @@ df_combine
 ```
 
 ```python
-[x for x in df_combine]
+df_combine.corr(numeric_only=True)["TOTAL"]
 ```
 
 ```python
-df_combine.corr(numeric_only=True)["TOTAL"]
+cols = ["freqMoy1998-2024", "Vulnérables", "Personnes affectées", "TOTAL", ]
 ```
 
 ```python

@@ -101,5 +101,9 @@ for year in tqdm(range(1979, 2025)):
 ```
 
 ```python
+glofas.download_reanalysis_year(year=2025, station_name=station_name)
+```
 
+```python
+glofas.process_reanalysis(station_name)
 ```

@@ -157,10 +157,6 @@ df_locale_peaks["level"] = calculate_stage(df_locale_peaks["runoff_mean"])
 ```
 
 ```python
-df_locale_peaks.sort_values("runoff_mean_rp")
-```
-
-```python
 df_recent = df_grdc[
     (df_grdc["season"] >= min_year) & (df_grdc["season"] < 2025)
 ].copy()
@@ -207,7 +203,7 @@ df_peaks.sort_values("level_rank")
 ```
 
 ```python
-thresh = 600
+thresh = 604
 ```
 
 ```python
@@ -218,6 +214,14 @@ total_years = df_recent["time"].dt.year.nunique()
 (total_years + 1) / df_recent[
     (df_recent["level"] >= thresh) & (df_recent["flood_type"] == "l")
 ]["season"].nunique()
+```
+
+```python
+thresh_r = 592
+```
+
+```python
+(46 + 1) / 9
 ```
 
 ```python
@@ -248,7 +252,106 @@ df_peaks = df_peaks.sort_values("level_rp")
 ```
 
 ```python
-df_peaks
+df_peaks.sort_values("level_rank")
+```
+
+```python
+df_peaks[
+    (df_peaks["level"] >= thresh_r) & (df_peaks["level"] < thresh)
+].sort_values("season")
+```
+
+```python
+df_peaks[df_peaks["level"] >= thresh].sort_values("season")
+```
+
+```python
+total_budget = 5
+readiness_frac = 0.05
+action_budget = total_budget * (1 - readiness_frac)
+readiness_budget = total_budget * readiness_frac
+```
+
+```python
+count_readiness = len(df_peaks[df_peaks["level"] >= thresh_r])
+count_action = len(df_peaks[df_peaks["level"] >= thresh])
+```
+
+```python
+count_action
+```
+
+```python
+count_total = len(df_peaks)
+```
+
+```python
+count_total
+```
+
+```python
+total_readiness_spend = count_readiness * readiness_budget
+total_action_spend = count_action * action_budget
+```
+
+```python
+total_spend = total_action_spend + total_readiness_spend
+```
+
+```python
+average_spend = total_spend / count_total
+```
+
+```python
+average_spend
+```
+
+```python
+total_spend / count_readiness
+```
+
+```python
+total_budget / average_spend
+```
+
+```python
+average_spend / total_budget
+```
+
+```python
+(46 + 1) / 9
+```
+
+```python
+(46 + 1) / 12
+```
+
+```python
+df_peaks["season"].min()
+```
+
+```python
+np.interp(5, df_peaks["level_rp"], df_peaks["level"])
+```
+
+```python
+np.interp(604, df_peaks["level"], df_peaks["level_rp"])
+```
+
+```python
+1 / np.interp(604, df_peaks["level"], df_peaks["level_rp"])
+```
+
+```python
+np.interp(603, df_peaks["level"], df_peaks["level_rp"])
+```
+
+```python
+np.interp(592, df_peaks["level"], df_peaks["level_rp"])
+```
+
+```python
+1 / np.interp(592, df_peaks["level"], df_peaks["level_rp"])
 ```
 
 ```python
@@ -284,17 +387,17 @@ fig, ax = plt.subplots(dpi=200)
 for col, label in [
     ("level_rp", "Globale"),
     ("l_rp", "Locales"),
-    ("g_rp", "Guinnéennes"),
+    ("g_rp", "Guinéennes"),
 ]:
     df_peaks.sort_values("level").plot(x=col, y="level", ax=ax, label=label)
 
 ax.set_xlabel("Période de retour (ans)")
 ax.set_ylabel("Niveau d'eau à Niamey (cm)")
 
-ax.set_xlim((1, 10))
+ax.set_xlim((1, 25))
 ax.set_ylim(top=680)
 
-ax.axhline(600, linestyle="--", color="crimson")
+ax.axhline(thresh, linestyle="--", color="crimson")
 
 ax.legend(title="Période de retour\nd'inondations")
 
@@ -320,33 +423,103 @@ xcolor, ycolor = "crimson", "darkorange"
 ```
 
 ```python
+thresh_r = 592
+```
+
+```python
 fig, ax = plt.subplots(dpi=200, figsize=(7, 7))
 
 for season in df_peaks["season"].unique():
-    color = "grey"
+    color = "lightgrey"
     l_peak = df_peaks_l.set_index("season").loc[season, "level"]
     g_peak = df_peaks_g.set_index("season").loc[season, "level"]
-    if l_peak >= thresh:
+    if l_peak >= thresh_r:
         color = xcolor
-    if g_peak >= thresh:
+    if g_peak >= thresh_r:
         color = ycolor
-    if (l_peak >= thresh) & (g_peak >= thresh):
+    if (l_peak >= thresh_r) & (g_peak >= thresh_r):
         color = "maroon"
+    if (l_peak >= thresh) | (g_peak >= thresh):
+        fontweight = "bold"
+    else:
+        fontweight = "normal"
     ax.annotate(
-        season, (l_peak, g_peak), va="center", ha="center", color=color
+        season,
+        (l_peak, g_peak),
+        va="center",
+        ha="center",
+        color=color,
+        fontweight=fontweight,
+        fontsize=8,
     )
 
-ax.axhline(thresh, color=ycolor)
-ax.axhspan(thresh, maxlim, facecolor=ycolor, alpha=0.1)
+linewidth = 1
+fontsize = 7
+ax.axhline(thresh, color=ycolor, linewidth=linewidth)
+ax.axhspan(thresh, maxlim, facecolor=ycolor, alpha=0.1, linewidth=linewidth)
+ax.annotate(
+    f" Action : {thresh} cm",
+    (minlim, thresh + 2),
+    fontstyle="italic",
+    color=ycolor,
+    ha="left",
+    fontsize=fontsize,
+)
+ax.annotate(
+    f" Action : {thresh} cm",
+    (minlim, thresh + 2),
+    fontstyle="italic",
+    color=ycolor,
+    ha="left",
+    fontsize=fontsize,
+)
+ax.axhline(thresh_r, color=ycolor, linestyle="--", linewidth=linewidth)
+ax.axhspan(thresh_r, maxlim, facecolor=ycolor, alpha=0.05, linewidth=linewidth)
+ax.annotate(
+    f" Mob. : {thresh_r} cm",
+    (minlim, thresh_r + 2),
+    fontstyle="italic",
+    color=ycolor,
+    ha="left",
+    fontsize=fontsize,
+)
 
-ax.axvline(thresh, color=xcolor)
-ax.axvspan(thresh, maxlim, facecolor=xcolor, alpha=0.1)
+ax.axvline(thresh, color=xcolor, linewidth=linewidth)
+ax.axvspan(thresh, maxlim, facecolor=xcolor, alpha=0.1, linewidth=linewidth)
+ax.annotate(
+    f"  Action : {thresh} cm",
+    (thresh, minlim),
+    fontstyle="italic",
+    color=xcolor,
+    ha="right",
+    fontsize=fontsize,
+    rotation=90,
+)
+ax.axvline(thresh_r, color=xcolor, linestyle="--", linewidth=linewidth)
+ax.axvspan(thresh_r, maxlim, facecolor=xcolor, alpha=0.05, linewidth=linewidth)
+ax.annotate(
+    f"  Mob. : {thresh_r} cm",
+    (thresh_r, minlim),
+    fontstyle="italic",
+    color=xcolor,
+    ha="right",
+    fontsize=fontsize,
+    rotation=90,
+)
 
 ax.set_xlim(lims)
 ax.set_ylim(lims)
 
 ax.set_xlabel("Niveau d'eau de crues locales (cm)")
-ax.set_ylabel("Niveau d'eau de crues guinnéennes (cm)")
+ax.set_ylabel("Niveau d'eau de crues guinéennes (cm)")
+ax.set_title("Inondations Niger : activations historiques\n")
+ax.text(
+    0.5,
+    1.01,
+    "Saisons d'analyse : 1979 à 2024",
+    transform=ax.transAxes,
+    ha="center",
+)
 
 [ax.spines[x].set_visible(False) for x in ["top", "right"]]
 ```
@@ -468,32 +641,56 @@ def get_peak_dates(df, level_col="level", season_col="season"):
 ```
 
 ```python
+df_peaks
+```
+
+```python
+readiness_thresh = np.interp(3, df_peaks["level_rp"], df_peaks["level"])
+```
+
+```python
+readiness_thresh
+```
+
+```python
 df_l_red_first = get_first_dates(df_l_recent, level=620)
 df_l_trig_first = get_first_dates(df_l_recent, level=thresh)
+df_l_readiness_first = get_first_dates(df_l_recent, level=readiness_thresh)
 df_l_peak = get_peak_dates(df_l_recent)
 ```
 
 ```python
 df_g_red_first = get_first_dates(df_g_recent, level=620)
 df_g_trig_first = get_first_dates(df_g_recent, level=thresh)
+df_g_readiness_first = get_first_dates(df_g_recent, level=readiness_thresh)
 df_g_peak = get_peak_dates(df_g_recent)
 ```
 
 ```python
-df_l_timing = df_l_red_first.merge(
-    df_l_trig_first, how="outer", on="season", suffixes=("_red", "_trig")
-).merge(df_l_peak)
+df_l_timing = (
+    df_l_red_first.merge(
+        df_l_trig_first, how="outer", on="season", suffixes=("_red", "_trig")
+    )
+    .merge(
+        df_l_readiness_first,
+        how="outer",
+        on="season",
+    )
+    .merge(df_l_peak)
+)
 df_l_timing["lt_red"] = (
     df_l_timing["first_date_red"] - df_l_timing["first_date_trig"]
 )
 df_l_timing["lt_peak"] = (
     df_l_timing["peak_date"] - df_l_timing["first_date_trig"]
 )
+df_l_timing["lt_readiness_red"] = (
+    df_l_timing["first_date_red"] - df_l_timing["first_date"]
+)
+df_l_timing["lt_readiness_peak"] = (
+    df_l_timing["peak_date"] - df_l_timing["first_date"]
+)
 df_l_timing["flood_type"] = "l"
-```
-
-```python
-df_l_timing.merge()
 ```
 
 ```python
@@ -509,14 +706,36 @@ df_l_timing["lt_peak"].mean()
 ```
 
 ```python
-df_g_timing = df_g_red_first.merge(
-    df_g_trig_first, how="outer", on="season", suffixes=("_red", "_trig")
-).merge(df_g_peak)
+df_l_timing["lt_readiness_red"].mean()
+```
+
+```python
+df_l_timing["lt_readiness_peak"].mean()
+```
+
+```python
+df_g_timing = (
+    df_g_red_first.merge(
+        df_g_trig_first, how="outer", on="season", suffixes=("_red", "_trig")
+    )
+    .merge(
+        df_g_readiness_first,
+        how="outer",
+        on="season",
+    )
+    .merge(df_g_peak)
+)
 df_g_timing["lt_red"] = (
     df_g_timing["first_date_red"] - df_g_timing["first_date_trig"]
 )
 df_g_timing["lt_peak"] = (
     df_g_timing["peak_date"] - df_g_timing["first_date_trig"]
+)
+df_g_timing["lt_readiness_red"] = (
+    df_g_timing["first_date_red"] - df_g_timing["first_date"]
+)
+df_g_timing["lt_readiness_peak"] = (
+    df_g_timing["peak_date"] - df_g_timing["first_date"]
 )
 df_g_timing["flood_type"] = "g"
 ```
@@ -526,7 +745,19 @@ df_g_timing
 ```
 
 ```python
+df_g_timing["lt_red"].mean()
+```
+
+```python
 df_g_timing["lt_peak"].mean()
+```
+
+```python
+df_g_timing["lt_readiness_red"].mean()
+```
+
+```python
+df_g_timing["lt_readiness_peak"].mean()
 ```
 
 ```python
@@ -542,13 +773,17 @@ df_timing["lt_red"].mean()
 ```
 
 ```python
-df_timing
+df_timing["lt_readiness_red"].mean()
 ```
 
 ```python
-ax = df_locale_recent[df_locale_recent["season"] == 2024].plot(
-    x="time", y="level"
-)
-ax.axhline(600, color="crimson")
-ax.axhline(580, color="darkorange")
+df_timing["lt_readiness_peak"].mean()
+```
+
+```python
+
+```
+
+```python
+
 ```

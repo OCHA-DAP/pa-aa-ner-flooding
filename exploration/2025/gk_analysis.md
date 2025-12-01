@@ -24,6 +24,8 @@ jupyter:
 
 ```python
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import pandas as pd
 
 from src.datasources import grdc, glofas
 from src.constants import *
@@ -34,7 +36,7 @@ station_name = "garbekourou"
 ```
 
 ```python
-glofas.process_reanalysis(station_name=station_name)
+# glofas.process_reanalysis(station_name=station_name)
 ```
 
 ```python
@@ -106,10 +108,6 @@ gk_drop_years = [
 ```
 
 ```python
-
-```
-
-```python
 df_peaks = (
     df_compare[df_compare["time"].dt.month < 11]
     .groupby(df_compare["time"].dt.year)
@@ -138,5 +136,40 @@ for year, row in df_peaks.set_index("year").iterrows():
 ```
 
 ```python
+df_compare
+```
 
+```python
+df_plot = df_compare.copy()
+df_plot["plot_date"] = df_plot["time"].map(
+    lambda x: pd.Timestamp(
+        year=1904,
+        month=x.month,
+        day=x.day,
+    )
+)
+```
+
+```python
+fig, ax = plt.subplots(figsize=(10, 5), dpi=200)
+
+for year, group in df_plot.groupby(df_plot["time"].dt.year):
+    group.plot(
+        x="plot_date",
+        y="dis24",
+        ax=ax,
+        legend=False,
+        color="k",
+        alpha=0.2,
+        linewidth=0.5,
+    )
+
+df_plot.groupby("plot_date")["dis24"].mean().plot(ax=ax, color="k")
+
+ax.xaxis.set_major_locator(mdates.MonthLocator())
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+
+ax.set_ylim(bottom=0)
+ax.set_xlim((df_plot["plot_date"].min(), df_plot["plot_date"].max()))
+[ax.spines[x].set_visible(False) for x in ["top", "right"]]
 ```
