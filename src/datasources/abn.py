@@ -23,12 +23,20 @@ def load_abn_niamey(local: bool = False) -> pd.DataFrame:
     return pd.read_excel(filepath, skiprows=[0, 1], index_col=0)
 
 
-def load_current_monitoring() -> pd.DataFrame:
+def load_current_monitoring(year: int = 2024) -> pd.DataFrame:
     """Load current monitoring data as recorded from SATH-ABN site"""
-    blob_name = (
-        f"{blob_utils.PROJECT_PREFIX}/raw/abn/"
-        f"niger_flood_framework_monitoring - Sheet1.csv"
-    )
+    if year == 2024:
+        blob_name = (
+            f"{blob_utils.PROJECT_PREFIX}/raw/abn/"
+            f"niger_flood_framework_monitoring - Sheet1.csv"
+        )
+    elif year == 2025:
+        blob_name = (
+            f"{blob_utils.PROJECT_PREFIX}/raw/abn/"
+            f"niger_flood_framework_monitoring_2025 - Sheet1.csv"
+        )
+    else:
+        raise ValueError("Year not supported")
     df = blob_utils.load_csv_from_blob(blob_name, parse_dates=["date"])
     cols = ["date", "level (cm)"]
     df = df[cols].rename(columns={"level (cm)": "level"}).dropna()
