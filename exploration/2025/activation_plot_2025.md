@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
 
-from src.datasources import grdc
+from src.datasources import grdc, abn
 from src.utils.rating_curve import calculate_stage
 from src.constants import *
 ```
@@ -88,7 +88,7 @@ df_monitoring_2024["source"] = "abn"
 
 ```python
 READINESS_THRESH = 592
-ACTION_THRESH = 605
+ACTION_THRESH = 604
 ```
 
 ```python
@@ -261,9 +261,158 @@ ax.set_title(f"Fleuve Niger à Niamey\nCrues guinéennes (depuis {min_year})")
 ```
 
 ```python
-gui_df[
-    (gui_df["plot_date"] == "1900-11-01") & (gui_df["season"] >= 2000)
-].sort_values("level", ascending=False)
+gui_df[gui_df["season"] >= min_year].groupby("season")[
+    "level"
+].max().reset_index()
+```
+
+```python
+gui_df_recent = gui_df[(gui_df["season"] >= 2000) & (gui_df["season"] < 2025)]
+```
+
+```python
+df_recent_peaks = gui_df_recent.loc[
+    gui_df_recent.groupby("season")["level"].idxmax()
+]
+```
+
+```python
+fig, ax = plt.subplots(dpi=200, figsize=(7, 7))
+
+df_recent_peaks.plot(
+    x="plot_date", y="level", linewidth=0, ax=ax, legend=False
+)
+
+
+[
+    ax.annotate(
+        row["season"],
+        row[["plot_date", "level"]],
+        ha="center",
+        va="center",
+        fontsize=8,
+    )
+    for _, row in df_recent_peaks.iterrows()
+]
+
+alpha = 0.7
+for thresh, color, label in [
+    (ACTION_THRESH, "crimson", "action"),
+    # (READINESS_THRESH, "darkorange", "mobilisation"),
+]:
+    ax.axhline(thresh, color=color, linestyle="--", zorder=-1, alpha=alpha)
+    ax.annotate(
+        f" {label} : {thresh} cm",
+        (datetime(1900, 12, 9), thresh),
+        ha="left",
+        va="bottom",
+        color=color,
+        fontsize=8,
+        alpha=alpha,
+    )
+
+latest_row = gui_df.loc[gui_df["date"].idxmax()]
+ax.annotate(
+    f' {latest_row["date"].date()}:\n {latest_row["level"]} cm',
+    (latest_row["plot_date"], latest_row["level"] + 4),
+    color=CHD_GREEN,
+    fontsize=12,
+    fontweight="bold",
+)
+ax.plot(
+    latest_row["plot_date"],
+    latest_row["level"],
+    color=CHD_GREEN,
+    marker=".",
+    markersize=10,
+)
+
+
+ax.xaxis.set_major_formatter(ticker.FuncFormatter(custom_date_formatter))
+
+ax.set_ylabel("Niveau du pic (cm) [ABN]")
+ax.set_xlabel("Date du pic")
+ax.set_title("Fleuve Niger à Niamey\nTiming des crues guinéennes")
+
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+```
+
+```python
+drop_years = [1984, 1936]
+gui_df_recent_long = gui_df[
+    (gui_df["season"] >= 1900)
+    & (gui_df["season"] < 2025)
+    & ~gui_df["season"].isin(drop_years)
+]
+```
+
+```python
+df_recent_peaks_long = gui_df_recent_long.loc[
+    gui_df_recent_long.groupby("season")["level"].idxmax()
+]
+```
+
+```python
+fig, ax = plt.subplots(dpi=200, figsize=(7, 7))
+
+df_recent_peaks_long.plot(
+    x="plot_date", y="level", linewidth=0, ax=ax, legend=False
+)
+
+
+[
+    ax.annotate(
+        row["season"],
+        row[["plot_date", "level"]],
+        ha="center",
+        va="center",
+        fontsize=8,
+    )
+    for _, row in df_recent_peaks_long.iterrows()
+]
+
+alpha = 0.7
+for thresh, color, label in [
+    (ACTION_THRESH, "crimson", "action"),
+    # (READINESS_THRESH, "darkorange", "mobilisation"),
+]:
+    ax.axhline(thresh, color=color, linestyle="--", zorder=-1, alpha=alpha)
+    ax.annotate(
+        f" {label} : {thresh} cm",
+        (datetime(1900, 11, 25), thresh),
+        ha="left",
+        va="bottom",
+        color=color,
+        fontsize=8,
+        alpha=alpha,
+    )
+
+latest_row = gui_df.loc[gui_df["date"].idxmax()]
+# ax.annotate(
+#     f' {latest_row["date"].date()}:\n {latest_row["level"]} cm',
+#     (latest_row["plot_date"], latest_row["level"] + 4),
+#     color=CHD_GREEN,
+#     fontsize=12,
+#     fontweight="bold",
+# )
+ax.plot(
+    latest_row["plot_date"],
+    latest_row["level"],
+    color=CHD_GREEN,
+    marker=".",
+    markersize=10,
+)
+
+
+ax.xaxis.set_major_formatter(ticker.FuncFormatter(custom_date_formatter))
+
+ax.set_ylabel("Niveau du pic (cm) [ABN]")
+ax.set_xlabel("Date du pic")
+ax.set_title("Fleuve Niger à Niamey\nTiming des crues guinéennes")
+
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 ```
 
 ```python
