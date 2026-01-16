@@ -416,5 +416,13 @@ ax.spines["right"].set_visible(False)
 ```
 
 ```python
+gui_df[(gui_df["season"] == 2024) & (gui_df["level"] >= 604)]
+```
 
+```python
+gui_df[(gui_df["season"] == 2024) & (gui_df["level"] >= 620)]
+```
+
+```python
+gui_df[(gui_df["season"] == 2024) & (gui_df["level"] >= 640)]
 ```

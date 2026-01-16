@@ -238,7 +238,12 @@ df_combine.corr(numeric_only=True)["TOTAL"]
 ```
 
 ```python
-cols = ["freqMoy1998-2024", "Vulnérables", "Personnes affectées", "TOTAL", ]
+cols = [
+    "freqMoy1998-2024",
+    "Vulnérables",
+    "Personnes affectées",
+    "TOTAL",
+]
 ```
 
 ```python
@@ -359,6 +364,62 @@ ax.axis("off")
 ```python
 blob_name = f"{PROJECT_PREFIX}/processed/targeting_2025.csv"
 stratus.upload_csv_to_blob(df_combine, blob_name)
+```
+
+```python
+gdf_save = adm3[adm3["along_niger"]]
+```
+
+```python
+gdf_save.plot()
+```
+
+```python
+filename = "ner_flooding_adm3s.shp"
+blob_name = f"{PROJECT_PREFIX}/processed/{filename}"
+stratus.upload_shp_to_blob(gdf_save, blob_name)
+```
+
+```python
+filename = "ner_flooding_adm3s.parquet"
+blob_name = f"{PROJECT_PREFIX}/processed/{filename}"
+```
+
+```python
+blob_name
+```
+
+```python
+def upload_geoparquet_to_blob(gdf, blob_name, stage="dev"):
+    buffer = BytesIO()
+    gdf.to_parquet(buffer, index=False)
+    buffer.seek(0)
+    stratus.upload_blob_data(
+        data=buffer.getvalue(),
+        blob_name=blob_name,
+        stage=stage,
+    )
+```
+
+```python
+def load_geoparquet_from_blob(blob_name, stage="dev"):
+    return gpd.read_parquet(BytesIO(stratus.load_blob_data(blob_name)))
+```
+
+```python
+upload_geoparquet_to_blob(gdf_save, blob_name)
+```
+
+```python
+load_geoparquet_from_blob(blob_name).plot()
+```
+
+```python
+blob_name
+```
+
+```python
+gdf_save.to_file(f"temp/{filename}")
 ```
 
 ```python
