@@ -13,6 +13,19 @@ def load_all_rivers():
     return gpd.read_file(RIVERS_DIR)
 
 
-def load_niger_river():
+def load_niger_river(local: bool = False):
     filename = "niger_river"
-    return gpd.read_file(HS_PROC_DIR / filename)
+    if local:
+        filepath = Path("temp") / filename
+    else:
+        filepath = HS_PROC_DIR / filename
+    return gpd.read_file(filepath)
+
+
+def load_niger_system_rivers(local: bool = False):
+    filename = "niger_system_rivers"
+    if local:
+        filepath = Path("temp") / filename
+    else:
+        filepath = HS_PROC_DIR / filename
+    return gpd.read_file(filepath)
